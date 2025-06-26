@@ -1,0 +1,72 @@
+# Instructions
+# 1. Create a `project` directory
+# 2. Download and unzip the issacgym under the `project` directory. 
+# 3. The current `dexterous-robotics-dockers` repo should also be under the `project` directory.
+# 4 Under the `project` directory, build the docker image using
+#   `docker build -f dexterous-robotics-dockers/dockerfiles/bidexhands -t bidexhands .`
+# 5. xhost +
+# 6. docker run -it --rm -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=$DISPLAY --network=host --gpus=all --name=bidexhands_container bidexhands bash
+# 7. Then, follow the README.md of `Bi-DexHands` for running.
+
+FROM nvcr.io/nvidia/pytorch:21.09-py3
+ENV DEBIAN_FRONTEND=noninteractive 
+
+# dependencies for gym
+#
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+ libxcursor-dev \
+ libxrandr-dev \
+ libxinerama-dev \
+ libxi-dev \
+ mesa-common-dev \
+ zip \
+ unzip \
+ make \
+ gcc-8 \
+ g++-8 \
+ vulkan-utils \
+ mesa-vulkan-drivers \
+ pigz \
+ git \
+ libegl1 \
+ git-lfs
+
+# Force gcc 8 to avoid CUDA 10 build issues on newer base OS
+RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 8
+RUN update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 8
+
+# WAR for eglReleaseThread shutdown crash in libEGL_mesa.so.0 (ensure it's never detected/loaded)
+# Can't remove package libegl-mesa0 directly (because of libegl1 which we need)
+RUN rm /usr/lib/x86_64-linux-gnu/libEGL_mesa.so.0 /usr/lib/x86_64-linux-gnu/libEGL_mesa.so.0.0.0 /usr/share/glvnd/egl_vendor.d/50_mesa.json
+
+COPY isaacgym/docker/nvidia_icd.json /usr/share/vulkan/icd.d/nvidia_icd.json
+COPY isaacgym/docker/10_nvidia.json /usr/share/glvnd/egl_vendor.d/10_nvidia.json
+
+WORKDIR /opt/isaacgym
+
+RUN useradd --create-home gymuser
+USER gymuser
+
+# copy gym repo to docker
+COPY --chown=gymuser isaacgym .
+
+# install gym modules
+ENV PATH="/home/gymuser/.local/bin:$PATH"
+RUN cd python && pip install -q -e .
+
+ENV NVIDIA_VISIBLE_DEVICES=all NVIDIA_DRIVER_CAPABILITIES=all
+
+# Clone IsaacGymEnv repo
+RUN git clone https://github.com/isaac-sim/IsaacGymEnvs.git /workspace/IsaacGymEnvs \
+    && cd /workspace/IsaacGymEnvs \
+    && git checkout aeed298638a1f7b5421b38f5f3cc2d1079b6d9c3
+WORKDIR /workspace/IsaacGymEnvs
+RUN pip install -e .
+
+# Clone IsaacGymEnv repo 
+RUN git clone https://github.com/PKU-MARL/DexterousHands.git /workspace/dexteroushands \
+    && cd /workspace/dexteroushands \
+    && git checkout dc41afd134cebfe4d80a5b861f0b8c15d734320a
+WORKDIR /workspace/dexteroushands
+RUN pip install -e .
