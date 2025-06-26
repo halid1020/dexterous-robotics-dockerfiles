@@ -6,7 +6,7 @@
 <div style="display:flex; align-items:center; gap: 20px;">
 <img src="dext-docker.jpeg" alt="Description" width="150" height="150">
   <div style="flex: 1;">
-    <p>This repository provides docker files for replicating projects in dexterous manipulation. We provided docker files for the following projects; see the files for corresponding instructions.</p>
+    <p>This repository provides dockerfiles for replicating dexterous manipulation research projects. We provided docker files for the following projects; see the files for corresponding instructions.</p>
   </div>
   
 </div>
