@@ -5,8 +5,9 @@
 # 4 Under the `project` directory, build the docker image using
 #   `docker build -f dexterous-robotics-dockers/dockerfiles/bidexhands -t bidexhands .`
 # 5. xhost +
-# 6. docker run -it --rm -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=$DISPLAY --network=host --gpus=all --name=bidexhands_container bidexhands bash
-# 7. Then, follow the README.md of `Bi-DexHands` for running.
+# 6. docker run -it --rm -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=$DISPLAY --network=host --gpus=all --name=unidexgrasp2_container unidexgrasp2 bash
+# 7. conda activate dexgrasp
+# 8. Then, follow the README.md of `UniDexGrasp++` for running.
 
 FROM nvcr.io/nvidia/pytorch:21.09-py3
 ENV DEBIAN_FRONTEND=noninteractive 
@@ -22,6 +23,7 @@ RUN apt-get update \
  mesa-common-dev \
  zip \
  unzip \
+ wget \
  make \
  gcc-8 \
  g++-8 \
@@ -57,16 +59,36 @@ RUN cd python && pip install -q -e .
 
 ENV NVIDIA_VISIBLE_DEVICES=all NVIDIA_DRIVER_CAPABILITIES=all
 
-# Clone IsaacGymEnv repo
-RUN git clone https://github.com/isaac-sim/IsaacGymEnvs.git /workspace/IsaacGymEnvs \
-    && cd /workspace/IsaacGymEnvs \
-    && git checkout aeed298638a1f7b5421b38f5f3cc2d1079b6d9c3
-WORKDIR /workspace/IsaacGymEnvs
-RUN pip install -e .
+# Download and install Anaconda silently
+USER root
+RUN wget --quiet https://repo.anaconda.com/archive/Anaconda3-2023.07-1-Linux-x86_64.sh -O /tmp/anaconda.sh \
+    && chmod +x /tmp/anaconda.sh
 
-# Clone IsaacGymEnv repo 
-RUN git clone https://github.com/PKU-MARL/DexterousHands.git /workspace/dexteroushands \
-    && cd /workspace/dexteroushands \
-    && git checkout dc41afd134cebfe4d80a5b861f0b8c15d734320a
-WORKDIR /workspace/dexteroushands
-RUN pip install -e .
+# Install Anaconda as gymuser under /home/gymuser/anaconda3
+USER gymuser
+RUN /bin/bash /tmp/anaconda.sh -b -p /home/gymuser/anaconda3
+ENV PATH="/home/gymuser/anaconda3/bin:$PATH"
+
+# SHELL ["/bin/bash", "-c"]
+
+RUN source /home/gymuser/.bashrc
+
+RUN conda init
+
+
+RUN git clone https://github.com/PKU-EPIC/UniDexGrasp2.git /workspace/UniDexGrasp2 \
+    && cd /workspace/UniDexGrasp2 \
+    && git checkout 6c9e710b04769bf5d9765e3233820101cb3d718f
+WORKDIR /workspace/UniDexGrasp2
+
+RUN conda create -n dexgrasp python==3.8
+ENV PATH /opt/conda/envs/dexgrasp/bin:$PATH
+
+# Comeback to UniDexGrasp2
+RUN conda run -n dexgrasp python --version
+WORKDIR /workspace/UniDexGrasp2
+RUN conda run -n dexgrasp pip install -e .
+
+RUN conda run -n dexgrasp pip install "git+https://github.com/erikwijmans/Pointnet2_PyTorch.git#egg=pointnet2_ops&subdirectory=pointnet2_ops_lib"
+RUN pip install gdown && \
+    gdown https://drive.google.com/uc?id=1DajtOFyTPC5YhsO-Fd3Gv17x7eAysI1b -O assets/

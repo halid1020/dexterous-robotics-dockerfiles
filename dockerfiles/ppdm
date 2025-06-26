@@ -1,0 +1,67 @@
+# Instructions
+# 1. Create a `project` directory
+# 3. The current `dexterous-robotics-dockers` repo should also be under the `project` directory.
+# 4 Under the `project` directory, build the docker image using
+#   `docker build -f dexterous-robotics-dockers/dockerfiles/ppdm -t ppdm .`
+# 5. xhost +
+# 6. docker run -it --rm -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=$DISPLAY --network=host --gpus=all --name=bidexhands_container bidexhands bash
+# 7. Then, follow the README.md of `Bi-DexHands` for running.
+
+# Use an official Ubuntu base image
+FROM ubuntu:20.04
+
+# Set noninteractive mode for apt
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    wget \
+    unzip \
+    libgl1-mesa-glx \
+    libgl1-mesa-dev \
+    libosmesa6-dev \
+    libglew-dev \
+    patchelf \
+    python3-pip \
+    python3-dev \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set environment variables for MuJoCo paths
+ENV MUJOCO_VERSION=1.50
+ENV MUJOCO_DIR=/root/.mujoco/mjpro150
+ENV LD_LIBRARY_PATH=/root/.mujoco/mjpro150/bin
+
+# Create MuJoCo directory
+RUN mkdir -p /root/.mujoco
+
+# Download MuJoCo 1.50 binaries (replace URL with a valid source)
+RUN wget -q https://mujoco.org/download/mjpro150_linux.zip -O /tmp/mjpro150.zip 
+RUN unzip /tmp/mjpro150.zip -d /root/.mujoco/ 
+RUN rm /tmp/mjpro150.zip
+
+# Copy your license key mjkey.txt into the image (you must have this file locally)
+# If you have mjkey.txt, add it to the build context and uncomment the next line:
+# COPY mjkey.txt /root/.mujoco/
+
+# Upgrade pip and install mujoco-py compatible with MuJoCo 1.5
+RUN pip3 install --upgrade pip
+RUN pip3 install 'mujoco-py<1.50.2,>=1.50.1'
+
+# Set working directory
+WORKDIR /root
+
+# Example command to test mujoco-py installation
+CMD ["python3", "-c", "import mujoco_py; print('MuJoCo 1.5 with mujoco-py installed successfully')"]
+
+RUN git clone https://github.com/google-research/pddm.git /workspace/ppdm \
+    && cd /workspace/ppdm \
+    && git checkout 06b88cdbafa7fc35451b3feb3e01aa6726113f72
+
+RUN conda env create -f environment_gpu.yml
+RUN source activate pddm-gpu-env
+RUN pip install -e .
+
+
+# Activate environment by default
+SHELL ["conda", "run", "-n", "pddm-env", "/bin/bash", "-c"]
