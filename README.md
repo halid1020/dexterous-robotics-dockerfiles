@@ -3,15 +3,14 @@
 *Author: Halid Abdulrahim Kadi*
 
 
-<!-- <div style="display:flex; align-items:center;">
-  <div>
+<div style="display:flex; align-items:center; gap: 20px;">
+  <div style="flex: 1;">
     <p>This repository provides docker files for replicating projects in dexterous manipulation. We provided docker files for the following projects; see the files for corresponding instructions.</p>
   </div>
-  <img src="dext-docker.jpeg" alt="Description" width="150" height="150" style="margin-right:20px;">
-</div> -->
+  <img src="dext-docker.jpeg" alt="Description" width="150" height="150">
+</div>
 
-| ![Description](dext-docker.jpeg) | This repository provides docker files for replicating projects in dexterous manipulation. We provided docker files for the following projects; see the files for corresponding instructions. |
-|:---:|:---|
+
 
 
 | Paper                                                                                     | Dockerfile    |
