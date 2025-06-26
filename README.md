@@ -1,9 +1,10 @@
 <h1> Dexterous Robotics Dockerfiles </h1>
 
-This repository provides the docker files for replicating the project results in dexterous manipulation. We provided docker files for the following projects
-* Bi-DexHands: Bimanual Dexterous Manipulation via Reinforcement Learning --- `bibdexhands`
+*Author: Halid Abdulrahim Kadi*
 
 
-Running issac gym with docker follow https://catalog.ngc.nvidia.com/orgs/nvidia/containers/isaac-sim.
-
-
+This repository provides docker files for replicating  projects in dexterous manipulation. We provided docker files for the following projects; see the files for corresponding instructions.
+| Paper                                                                                     | Dockerfile    |
+|------------------------------------------------------------------------------------------|---------------------|
+| Bi-DexHands: Bimanual Dexterous Manipulation via Reinforcement Learning                  | `bibdexhands`       |
+| UniDexGrasp++: Improving Dexterous Grasping Policy Learning via Geometry-aware Curriculum and Iterative Generalist-Specialist Learning | `unigrasp2`         |
