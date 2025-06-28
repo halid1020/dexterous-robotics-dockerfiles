@@ -3,7 +3,7 @@
 # 2. Download and unzip the issacgym under the `project` directory from https://developer.nvidia.com/isaac-gym
 # 3. The current `dexterous-robotics-dockers` repo should also be under the `project` directory.
 # 4 Under the `project` directory, build the docker image using
-#   `docker build -f dexterous-robotics-dockers/dockerfiles/bidexhands -t bidexhands .`
+#   `docker build -f dexterous-robotics-dockerfiles/dockerfiles/bidexhands -t bidexhands .`
 # 5. xhost +
 # 6. docker run -it --rm -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=$DISPLAY --network=host --gpus=all --name=bidexhands_container bidexhands bash
 # 7. Then, follow the README.md of `Bi-DexHands` for running.

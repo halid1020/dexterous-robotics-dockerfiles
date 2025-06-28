@@ -1,0 +1,86 @@
+FROM gaetanlandreau/pytorch3d:0.7.4
+
+# Install system dependencies
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    git-lfs \
+    wget \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    build-essential \
+    ca-certificates \
+    openssh-client 
+
+RUN rm -rf /var/lib/apt/lists/*
+
+# Create user with passwordless sudo (optional for dev containers)
+RUN useradd --create-home --shell /bin/bash dexdiffuser && \
+    chown -R dexdiffuser:dexdiffuser /home/dexdiffuser
+
+USER root
+RUN mkdir -p /workspace && chown dexdiffuser:dexdiffuser /workspace
+
+USER dexdiffuser
+WORKDIR /home/dexdiffuser
+
+# Allow git clone to work (HTTPS method works out of the box)
+# If SSH is needed, mount your ~/.ssh directory at runtime:
+# docker run -v ~/.ssh:/home/dexdiffuser/.ssh ...
+
+# Clone DexDiffuser repo as part of build
+RUN git clone https://github.com/YuLiHN/DexDiffuser.git /workspace/DexDiffuser && \
+    cd /workspace/DexDiffuser && \
+    git checkout 18138b2a922ab2c1da785374a29ca81a4e738531
+
+WORKDIR /workspace/DexDiffuser
+
+# Install BPS and other pip dependencies
+RUN pip install --no-cache-dir \
+    git+https://github.com/otaheri/chamfer_distance \
+    git+https://github.com/otaheri/bps_torch \
+    omegaconf einops \
+    urdf-parser-py hydra-core loguru plotly tqdm transformations \
+    trimesh matplotlib pyrender tensorboard transforms3d pytorch-kinematics \
+    Flask
+
+# gdown must be run as root because it downloads into system-level dirs
+# Install gdown globally (as root)
+USER root
+RUN pip install --no-cache-dir gdown
+
+# Create necessary folders
+RUN mkdir -p /workspace/DexDiffuser/tmp_download && \
+    mkdir -p /workspace/DexDiffuser/data && \
+    mkdir -p /workspace/DexDiffuser/dexdiffuser_data && \
+    chown -R dexdiffuser:dexdiffuser /workspace/DexDiffuser
+
+# Switch to dexdiffuser and download files
+USER dexdiffuser
+WORKDIR /workspace/DexDiffuser/tmp_download
+
+# Download the folder using gdown (requires version >=4.4.0)
+RUN gdown --folder https://drive.google.com/drive/folders/1pAfkVYeYUWfKs8TEAoppScO3IoHcYQML
+
+# Extract object.zip to data/
+RUN unzip object.zip -d /workspace/DexDiffuser/data
+
+# Move .pickle file to dexdiffuser_data/
+RUN find . -name "*.pickle" -exec mv {} /workspace/DexDiffuser/dexdiffuser_data/ \;
+
+# Cleanup
+RUN rm -rf /workspace/DexDiffuser/tmp_download
+
+WORKDIR /workspace/DexDiffuser
+
+
+# Note: You can't use gdown to download entire folders directly without using the gdown CLI with specific flags.
+# Either:
+# - Pre-download the folder manually and mount it during docker run.
+# OR
+# - Use gdown with the proper folder link and option --folder
+
+# Optional: Clean up to reduce image size
+USER dexdiffuser
+
+CMD ["/bin/bash"]
