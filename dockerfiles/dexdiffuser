@@ -1,3 +1,8 @@
+# docker build --progress=plain -f dexterous-robotics-dockerfiles/dockerfiles/dexdiffuser -t dexdiffuser .
+# xhost +
+# docker run -it --rm -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=$DISPLAY --network=host --gpus=all --name=dexdiffuser_container dexdiffuser bash
+
+
 FROM gaetanlandreau/pytorch3d:0.7.4
 
 # Install system dependencies
@@ -62,16 +67,27 @@ WORKDIR /workspace/DexDiffuser/tmp_download
 # Download the folder using gdown (requires version >=4.4.0)
 RUN gdown --folder https://drive.google.com/drive/folders/1pAfkVYeYUWfKs8TEAoppScO3IoHcYQML
 
+RUN ls
+
 # Extract object.zip to data/
-RUN unzip object.zip -d /workspace/DexDiffuser/data
+RUN unzip data/object.zip -d /workspace/DexDiffuser/data
 
 # Move .pickle file to dexdiffuser_data/
-RUN find . -name "*.pickle" -exec mv {} /workspace/DexDiffuser/dexdiffuser_data/ \;
+RUN find ./data -name "*.pickle" -exec mv {} /workspace/DexDiffuser/dexdiffuser_data/ \;
+RUN mv ./data/train_succ.pt /workspace/DexDiffuser/dexdiffuser_data/
+RUN mv ./data/obj_bps_dist_full.pt /workspace/DexDiffuser/dexdiffuser_data/
 
-# Cleanup
-RUN rm -rf /workspace/DexDiffuser/tmp_download
 
 WORKDIR /workspace/DexDiffuser
+
+# Update config file to point to correct data root
+RUN sed -i 's|^data_root:.*|data_root: /workspace/DexDiffuser/dexdiffuser_data|' /workspace/DexDiffuser/configs/sample.yaml
+RUN sed -i 's|^\( *data_root:\).*|\1 /workspace/DexDiffuser/dexdiffuser_data|' /workspace/DexDiffuser/configs/task/evaluator_dexgn_slurm.yaml
+RUN sed -i 's|^\( *data_root:\).*|\1 /workspace/DexDiffuser/dexdiffuser_data|' /workspace/DexDiffuser/configs/task/grasp_gen_ur_dexgn_slurm.yaml
+RUN sed -i 's|^\( *object_root:\).*|\1 /workspace/DexDiffuser/dexdiffuser_data|' /workspace/DexDiffuser/configs/task/evaluator_dexgn_slurm.yaml
+RUN sed -i 's|^\( *object_root:\).*|\1 /workspace/DexDiffuser/dexdiffuser_data|' /workspace/DexDiffuser/configs/task/grasp_gen_ur_dexgn_slurm.yaml
+
+
 
 
 # Note: You can't use gdown to download entire folders directly without using the gdown CLI with specific flags.
