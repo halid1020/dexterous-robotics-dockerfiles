@@ -1,0 +1,60 @@
+FROM nvidia/cuda:11.2.2-cudnn8-devel-ubuntu18.04
+
+# Set env variables early
+ENV DEBIAN_FRONTEND=noninteractive
+ENV MUJOCO_PATH="/home/user/.mujoco"
+ENV LD_LIBRARY_PATH="/home/user/.mujoco/mujoco200/bin:${LD_LIBRARY_PATH}"
+
+# Install dependencies and Python 3.7
+RUN apt-get update && apt-get install -y \
+    python3.7 python3.7-dev python3-pip \
+    libffi-dev \
+    sudo curl unzip git wget \
+    libosmesa6-dev libgl1-mesa-glx libglfw3 libglew-dev \
+    patchelf gcc libgl1-mesa-dev \
+    libxrandr2 libxinerama1 libxcursor1 \
+    vim openssh-server tzdata \
+ && rm -rf /var/lib/apt/lists/*
+
+
+# Set default python
+RUN ln -sf /usr/bin/python3.7 /usr/bin/python3 && \
+    ln -sf /usr/bin/python3.7 /usr/bin/python
+
+# Install pip for Python 3.7
+# RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.7
+RUN ln -sf /usr/bin/pip3 /usr/bin/pip
+
+
+# Create non-root user
+RUN useradd -ms /bin/bash user && echo "user ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+USER user
+WORKDIR /home/user
+
+# Setup Mujoco directory and copy key
+RUN mkdir -p $MUJOCO_PATH
+COPY dexterous-robotics-dockerfiles/dockerfiles/mjkey.txt $MUJOCO_PATH/mjkey.txt
+
+# Download and install Mujoco
+RUN wget https://www.roboti.us/download/mujoco200_linux.zip && \
+    unzip mujoco200_linux.zip && \
+    mv mujoco200_linux $MUJOCO_PATH/mujoco200 && \
+    rm mujoco200_linux.zip
+
+# Add LD_LIBRARY_PATH to shell profile
+RUN echo "export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}" >> ~/.bashrc
+
+# Install mujoco-py
+RUN pip install Cython==0.29.36 setuptools==59.5.0 && \
+    pip install numpy==1.21.6 && \
+    pip install mujoco-py==2.0.2.8 gym==0.21.0
+
+
+
+# SSH setup if still required (optional)
+USER root
+RUN echo "root:123123" | chpasswd && \
+    echo 'PermitRootLogin yes\nPasswordAuthentication yes\nX11Forwarding yes\nX11DisplayOffset 10\nX11UseLocalhost no' >> /etc/ssh/sshd_config && \
+    service ssh restart
+
+USER user
