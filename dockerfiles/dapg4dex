@@ -1,3 +1,9 @@
+
+# docker build -f dexterous-robotics-dockerfiles/dockerfiles/dapg4dex -t dapg4dex .
+# docker run -it --rm -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=$DISPLAY --network=host --gpus=all --name=dapg4dex_container dapg4dex bash
+# cd dapg
+# python utils/visualize_demos.py --env_name relocate-v0
+
 FROM nvidia/cuda:11.2.2-cudnn8-devel-ubuntu18.04
 
 # Set env variables early
@@ -45,11 +51,63 @@ RUN wget https://www.roboti.us/download/mujoco200_linux.zip && \
 RUN echo "export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}" >> ~/.bashrc
 
 # Install mujoco-py
-RUN pip install Cython==0.29.36 setuptools==59.5.0 && \
-    pip install numpy==1.21.6 && \
-    pip install mujoco-py==2.0.2.8 gym==0.21.0
+RUN pip install Cython==0.29.36 setuptools==59.5.0 
+RUN pip install numpy==1.21.6
+
+# Install Pillow dependencies
+USER root
+RUN apt-get update && apt-get install -y \
+    libjpeg-dev \
+    zlib1g-dev \
+    libpng-dev \
+    libtiff-dev \
+    libfreetype6-dev \
+    liblcms2-dev \
+    libwebp-dev \
+    tcl8.6-dev \
+    tk8.6-dev \
+    python3-tk \
+    libharfbuzz-dev \
+    libfribidi-dev \
+    libxcb1-dev
+
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    gfortran \
+    libopenblas-dev \
+    liblapack-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 
+USER user
+RUN pip install pybind11 pythran
+RUN pip install --upgrade pip setuptools wheel
+RUN pip install mujoco-py==2.0.2.8 gym==0.13
+
+
+## Install mjrl
+RUN git clone https://github.com/aravindr93/mjrl.git /home/user/mjrl && \
+    pip install -e /home/user/mjrl
+
+## install robo hive
+USER root
+RUN apt-get update && apt-get install -y ffmpeg
+USER user
+
+RUN git clone --branch v0.1real https://github.com/vikashplus/robohive.git /home/user/mj_envs && \
+    cd /home/user/mj_envs && \
+    git submodule update --init mj_envs/sims/Adroit mj_envs/sims/YCB_sim mj_envs/sims/fetch_sim mj_envs/sims/franka_sim mj_envs/sims/furniture_sim mj_envs/sims/sawyer_sim mj_envs/sims/scene_sim
+
+RUN cd /home/user/mj_envs && \
+    pip install -e .
+
+RUN git clone https://github.com/aravindr93/hand_dapg.git /home/user/hand_dapg
+
+WORKDIR /home/user/hand_dapg
+
+# && \
+#     cd /home/user/mj_envs && \
+#     pip install -e .
 
 # SSH setup if still required (optional)
 USER root
